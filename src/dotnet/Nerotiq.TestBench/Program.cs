@@ -1,5 +1,7 @@
 ﻿using System;
+using System.IO;
 using System.Runtime.InteropServices;
+using Nerotiq.Util;
 using OpenCL.Net;
 using OpenCL.Net.Extensions;
 
@@ -44,31 +46,51 @@ namespace Nerotiq.TestBench
 
             var context = Cl.CreateContext(null, 1, new[] { selectedDevice }, null, IntPtr.Zero, out var error);
 
-            const string correctSource = @"
+            const string kernelSrc = @"
             // Simple test; c[i] = a[i] + b[i]
             __kernel void add_array(__global float *a, __global float *b, __global float *c)
             {
                 int xid = get_global_id(0);
-                c[xid] = a[xid] + b[xid];
+                c[xid] = activation(a[xid] + b[xid] - 1500);
             }
             
             __kernel void sub_array(__global float *a, __global float *b, __global float *c)
             {
                 int xid = get_global_id(0);
-                c[xid] = a[xid] - b[xid];
+                c[xid] = a[xid] - b[xid] - 2000;
             }
+                        
+            __kernel void double_everything(__global float *a)
+            {
+                int xid = get_global_id(0);
+                a[xid] = a[xid] * 2;
+            }
+
             ";
 
+            var activation = File.ReadAllText("../../opencl/activation/relu.clh") + "\n";
+
+            var src = activation + kernelSrc;
                 
-            var program = Cl.CreateProgramWithSource(context, 1, new[] { correctSource }, null, out var error2);
+            Console.WriteLine("=== src ===");
+            Console.WriteLine(src);
+            Console.WriteLine("============");
+
+            var program = Cl.CreateProgramWithSource(context, 1, new[] { src }, null, out var error2);
             error2 = Cl.BuildProgram(program, 1, new[] { selectedDevice }, string.Empty, null, IntPtr.Zero);
     
+            if (error2 == ErrorCode.BuildProgramFailure) 
+            {
+                Console.Error.WriteLine(Cl.GetProgramBuildInfo(program, selectedDevice, ProgramBuildInfo.Log, out error));
+            }
+
             Console.WriteLine(error2);
 
             // Get the kernels.
             var kernels = Cl.CreateKernelsInProgram(program, out error);
             Console.WriteLine($"Program contains {kernels.Length} kernels.");
-            var kernel = kernels[0];
+            var kernelAdd = kernels[0];
+            var kernelDouble = kernels[2];
 
             //
             float[] A = new float[1000];
@@ -86,15 +108,15 @@ namespace Nerotiq.TestBench
 
             // Create a command queue.
             var cmdQueue = Cl.CreateCommandQueue(context, selectedDevice, CommandQueueProperties.None, out error);
-
             
             int intPtrSize = 0;
             intPtrSize = Marshal.SizeOf(typeof(IntPtr));
 
-            error = Cl.SetKernelArg(kernel, 0, new IntPtr(intPtrSize), hDeviceMemA);
-            error = Cl.SetKernelArg(kernel, 1, new IntPtr(intPtrSize), hDeviceMemB);
-            error = Cl.SetKernelArg(kernel, 2, new IntPtr(intPtrSize), hDeviceMemC);
-
+            error = Cl.SetKernelArg(kernelDouble, 0, new IntPtr(intPtrSize), hDeviceMemA);
+            
+            error = Cl.SetKernelArg(kernelAdd, 0, new IntPtr(intPtrSize), hDeviceMemA);
+            error = Cl.SetKernelArg(kernelAdd, 1, new IntPtr(intPtrSize), hDeviceMemB);
+            error = Cl.SetKernelArg(kernelAdd, 2, new IntPtr(intPtrSize), hDeviceMemC);
 
             // write data from host to device
             Event clevent;
@@ -106,7 +128,8 @@ namespace Nerotiq.TestBench
                 B, 0, null, out clevent);
 
             // execute kernel
-            error = Cl.EnqueueNDRangeKernel(cmdQueue, kernel, 1, null, new IntPtr[] { new IntPtr(1000) }, null, 0, null, out clevent);
+            error = Cl.EnqueueNDRangeKernel(cmdQueue, kernelDouble, 1, null, new IntPtr[] { new IntPtr(1000) }, null, 0, null, out clevent);
+            error = Cl.EnqueueNDRangeKernel(cmdQueue, kernelAdd, 1, null, new IntPtr[] { new IntPtr(1000) }, null, 0, null, out clevent);
             Console.WriteLine($"Run result: {error}");
             
             
@@ -118,6 +141,10 @@ namespace Nerotiq.TestBench
             }
             
             program.Dispose();
+
+            foreach (var res in typeof(SourceLoader).Assembly.GetManifestResourceNames()) {
+                Console.WriteLine(res);
+            }
         }
     }
 }
