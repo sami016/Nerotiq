@@ -18,8 +18,8 @@
  * layerOutputs: pointer to layer outputs vector.
  */
 __kernel void forwardPass(
-    int previousLayerNodeCount,
-    int layerNodeCount,
+    uint previousLayerNodeCount,
+    uint layerNodeCount,
     __global float *previousLayerOutputs,
     __global float *layerWeights,
     __global float *layerBiases,
@@ -31,9 +31,9 @@ __kernel void forwardPass(
     int node_id = get_global_id(0);
     // Sum up the product of the inputs and the weights.
     float sum = 0.0;
-    for (int i=0; i<previousLayerOutputs; i++)
+    for (int i=0; i<previousLayerNodeCount; i++)
     {
-        float weight = layerWeights[i + node_id * previousLayerNodeCount];
+        float weight = layerWeights[i * layerNodeCount + node_id];
         float input = previousLayerOutputs[i];
         sum += weight * input;
     }

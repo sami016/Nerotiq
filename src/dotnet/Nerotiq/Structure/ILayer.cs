@@ -20,6 +20,17 @@ namespace Nerotiq.Structure
         ushort[] Dimensionality { get; }
 
         /**
+         * Gets the layer's output buffer (useful for linking layers).
+         * This will match the node count in length. 
+         */
+        IMem<float> Outputs { get; }
+
+        /**
+         * Reference to the previous layer set when building the network.
+         */
+        ILayer Previous { set; }
+
+        /**
          * 
          */
         void ForwardPass(ExecutionSequence executionSequence);
@@ -28,5 +39,10 @@ namespace Nerotiq.Structure
          * 
          */
         void BackwardPass(ExecutionSequence executionSequence);
+
+        /**
+         * 
+         */
+        float[] GetOutputs(ExecutionSequence executionSequence);
     }
 }

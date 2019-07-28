@@ -29,30 +29,69 @@ namespace Nerotiq
          */
         public void FinishExecution() {
             if (_awaitEvent.HasValue) {
-                Cl.WaitForEvents(1, new Event[] { _awaitEvent.Value });
+                var errorCode = Cl.WaitForEvents(1, new Event[] { _awaitEvent.Value });
                 _awaitEvent = null;
+                if (errorCode != ErrorCode.Success) {
+                    throw new Exception($"Failed to await events: {errorCode}");
+                }
             }
         }
 
-        public void EnqueueWriteBuffer<T>(IMem<T> buffer, Bool blockingWrite, int offset, int length, T[] data) 
+        public void EnqueueReadBuffer<T>(IMem<T> buffer, int offset, int length, T[] data) 
+            where T : struct
+        {
+            Cl.EnqueueReadBuffer(
+                CommandQueue,
+                buffer,
+                Bool.True,
+                offset,
+                length,
+                data,
+                0,//_awaitEvent == null ? 0 : 1, 
+                null,//_awaitEvent == null ? new Event[0] : new Event[]{ _awaitEvent.Value },
+                out var awaitEvent
+            );
+            //_awaitEvent = awaitEvent;
+        }
+
+        public T[] ReadBuffer<T>(IMem<T> buffer, int offset, int length) 
+            where T : struct
+        {
+            var data = new T[length];
+            Cl.EnqueueReadBuffer(
+                CommandQueue,
+                buffer,
+                Bool.True,
+                offset,
+                length,
+                data,
+                0,//_awaitEvent == null ? 0 : 1, 
+                null,//_awaitEvent == null ? new Event[0] : new Event[]{ _awaitEvent.Value },
+                out var awaitEvent
+            );
+            //s_awaitEvent = awaitEvent;
+            return data;
+        }
+
+        public void EnqueueWriteBuffer<T>(IMem<T> buffer, int offset, int length, T[] data) 
             where T : struct
         {
             Cl.EnqueueWriteBuffer(
                 CommandQueue, 
                 buffer, 
-                blockingWrite, 
+                Bool.True, 
                 offset, 
                 length, 
                 data,
-                _awaitEvent == null ? 0 : 1, 
-                _awaitEvent == null ? new Event[0] : new Event[]{ _awaitEvent.Value },
+                0,//_awaitEvent == null ? 0 : 1, 
+                null,//_awaitEvent == null ? new Event[0] : new Event[]{ _awaitEvent.Value },
                 out var awaitEvent
             );   
-            _awaitEvent = awaitEvent;
+            //_awaitEvent = awaitEvent;
         }
         
         public void EnqueueNDRangeKernel(Kernel kernel, uint workDim, IntPtr[] globalWorkOffset, IntPtr[] globalWorkSize, IntPtr[] localWorkSize) {
-            Cl.EnqueueNDRangeKernel(
+            var errorCode = Cl.EnqueueNDRangeKernel(
                 CommandQueue,
                 kernel, 
                 workDim,
@@ -60,10 +99,14 @@ namespace Nerotiq
                 globalWorkSize, 
                 localWorkSize, 
                 _awaitEvent == null ? (uint)0 : (uint)1, 
-                _awaitEvent == null ? new Event[0] : new Event[]{ _awaitEvent.Value },
+                _awaitEvent == null ? null : new Event[]{ _awaitEvent.Value },
                 out var awaitEvent
             );
-            
+            if (errorCode != ErrorCode.Success)
+            {
+                throw new NerotiqException($"Error enqueueing ND range kernel: {errorCode}");
+            }
+            _awaitEvent = awaitEvent;
         }
     }
 }

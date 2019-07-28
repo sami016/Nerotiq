@@ -7,7 +7,7 @@ namespace Nerotiq.Math.Activation {
         private static readonly string _source;
         static ReluActivation()
         {
-            _source = SourceLoader.Read("Nerotiq.activation.relu.clh");
+            _source = SourceLoader.Read("Nerotiq.activation.relu.cl");
         }
 
         public string Source => _source;

@@ -1,3 +1,4 @@
+using System;
 using OpenCL.Net;
 
 namespace Nerotiq.Structure {
@@ -5,6 +6,10 @@ namespace Nerotiq.Structure {
         
         public int NodeCount { get; }
         public ushort[] Dimensionality { get; }
+        public ILayer Previous { get; set; }
+
+        public IMem<float> Outputs => _inputs;
+
         private readonly ExecutionContext _executionContext;
         private readonly IMem<float> _inputs;
 
@@ -26,9 +31,11 @@ namespace Nerotiq.Structure {
 
         public void SetInputs(ExecutionSequence executionSequence, float[] inputs)
         {
+            if (inputs.Length != NodeCount) {
+                throw new ArgumentException($"input array length ({inputs.Length}) does not match input layer size ({NodeCount})", nameof(inputs));
+            }
             executionSequence.EnqueueWriteBuffer(
                 _inputs,
-                Bool.True,
                 0,
                 inputs.Length,
                 inputs
@@ -47,6 +54,15 @@ namespace Nerotiq.Structure {
 
         public void Dispose()
         {
+        }
+
+        public float[] GetOutputs(ExecutionSequence executionSequence)
+        {
+            return executionSequence.ReadBuffer(
+                _inputs,
+                0,
+                NodeCount
+            );
         }
     }
 }

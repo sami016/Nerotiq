@@ -51,7 +51,7 @@ namespace Nerotiq.TestBench
             __kernel void add_array(__global float *a, __global float *b, __global float *c)
             {
                 int xid = get_global_id(0);
-                c[xid] = activation(a[xid] + b[xid] - 1500);
+                c[xid] = a[xid] + b[xid] - 1500;
             }
             
             __kernel void sub_array(__global float *a, __global float *b, __global float *c)
@@ -68,9 +68,8 @@ namespace Nerotiq.TestBench
 
             ";
 
-            var activation = File.ReadAllText("../../opencl/activation/relu.clh") + "\n";
 
-            var src = activation + kernelSrc;
+            var src = kernelSrc;
                 
             Console.WriteLine("=== src ===");
             Console.WriteLine(src);
@@ -125,16 +124,21 @@ namespace Nerotiq.TestBench
                 A, 0, null, out clevent);
             error = Cl.EnqueueWriteBuffer(cmdQueue, hDeviceMemB, Bool.True, IntPtr.Zero,
                 new IntPtr(1000 * sizeof(float)),
-                B, 0, null, out clevent);
+                B, 1, new []{ clevent }, out clevent);
 
             // execute kernel
-            error = Cl.EnqueueNDRangeKernel(cmdQueue, kernelDouble, 1, null, new IntPtr[] { new IntPtr(1000) }, null, 0, null, out clevent);
-            error = Cl.EnqueueNDRangeKernel(cmdQueue, kernelAdd, 1, null, new IntPtr[] { new IntPtr(1000) }, null, 0, null, out clevent);
+            error = Cl.EnqueueNDRangeKernel(cmdQueue, kernelDouble, 1, null, new IntPtr[] { new IntPtr(1000) }, null, 1, new [] { clevent }, out clevent);
+
+
+            var infoBuffer = Cl.GetEventInfo(clevent, EventInfo.CommandExecutionStatus, out var e2);
+            error = Cl.EnqueueNDRangeKernel(cmdQueue, kernelAdd, 1, null, new IntPtr[] { new IntPtr(1000) }, null, 1, new [] { clevent }, out clevent);
             Console.WriteLine($"Run result: {error}");
+
             
             
 
-            error = Cl.EnqueueReadBuffer(cmdQueue, hDeviceMemC, Bool.True, 0, C.Length, C, 0, null, out clevent);
+            error = Cl.EnqueueReadBuffer(cmdQueue, hDeviceMemC, Bool.False, 0, C.Length, C, 1, new [] { clevent }, out clevent);
+            Cl.WaitForEvents(1, new [] { clevent } );
 
             for (var i=0; i<1000; i++) {
                 Console.WriteLine($"[{i}]: {C[i]}");
