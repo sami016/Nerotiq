@@ -6,11 +6,14 @@ using Nerotiq.Util;
 using OpenCL.Net;
 
 namespace Nerotiq.Structure {
-    public class FeedForwardLayer : ILayer
+    public class FeedForwardLayer : ILayer, IOutput
     {
         private static readonly string _source;
         private IMem<float> _layerSums;
         private IMem<float> _layerOutputs;
+        private IMem<float> _layerDeltas;
+        // This is only defined for the final output layer.
+        private IMem<float> _layerTargets;
         private IMem<float> _weights;
         private IMem<float> _biases;
         private Program _program;
@@ -27,18 +30,22 @@ namespace Nerotiq.Structure {
             this.NodeCount = nodeCount;
                
         }
-                public int NodeCount { get; set; }
+        public int NodeCount { get; set; }
 
         private readonly int _previousLayerNodeCount;
+        private readonly bool _finalLayer;
 
         public ushort[] Dimensionality { get; set; }
 
         private readonly int _weightLength;
 
         public IMem<float> Outputs => _layerOutputs;
+        public IMem<float> Deltas => _layerDeltas;
+        public IMem<float> Weights => _weights;
 
-        public FeedForwardLayer(ExecutionContext executionContext, FeedForwardLayerOptions options)
+        public FeedForwardLayer(ExecutionContext executionContext, FeedForwardLayerOptions options, bool finalLayer)
         {
+            _finalLayer = finalLayer;
             Dimensionality = options.Dimensionality;
             _weightLength = MatrixHelpers.GetWeightCardinality(options.FromDimensionality, options.Dimensionality);
             NodeCount = MatrixHelpers.GetCardinality(options.Dimensionality);
@@ -49,6 +56,7 @@ namespace Nerotiq.Structure {
             CompileKernels(executionContext);
             AllocateBuffers(executionContext, options);
             SetForwardPassArgs();
+            SetBackwardPassArgs();
         }
 
         private void CompileKernels(ExecutionContext executionContext) 
@@ -81,11 +89,11 @@ namespace Nerotiq.Structure {
             {
                 throw new NerotiqException($"Error creating kernel forwardPass: {error}");
             }
-            // _backwardKernel = Cl.CreateKernel(_program, "backwardPass", out error);
-            // if (error != ErrorCode.Success) 
-            // {
-            //     throw new NerotiqException($"Error creating kernel backwardPass: {error}");
-            // }
+            _backwardKernel = Cl.CreateKernel(_program, "backwardPass", out error);
+            if (error != ErrorCode.Success) 
+            {
+                throw new NerotiqException($"Error creating kernel backwardPass: {error}");
+            }
         }
 
         private void AllocateBuffers(ExecutionContext executionContext, FeedForwardLayerOptions options) 
@@ -110,6 +118,30 @@ namespace Nerotiq.Structure {
             {
                 throw new NerotiqException($"Error allocating memory buffer {error}");
             }
+            _layerDeltas = Cl.CreateBuffer<float>(
+                executionContext.OpenClContext, 
+                MemFlags.ReadWrite,
+                NodeCount, 
+                out error
+            );
+            if (error != ErrorCode.Success) 
+            {
+                throw new NerotiqException($"Error allocating delta buffer {error}");
+            }
+            if (_finalLayer) {
+                _layerTargets = Cl.CreateBuffer<float>(
+                    executionContext.OpenClContext, 
+                    MemFlags.ReadWrite,
+                    NodeCount, 
+                    out error
+                );
+                if (error != ErrorCode.Success) 
+                {
+                    throw new NerotiqException($"Error allocating targets buffer {error}");
+                }
+            }
+
+            // Parameters
             _weights = Cl.CreateBuffer<float>(
                 executionContext.OpenClContext, 
                 MemFlags.ReadWrite,
@@ -176,6 +208,95 @@ namespace Nerotiq.Structure {
             );
         }
 
+           
+        private void SetBackwardPassArgs() 
+        {
+            // Arg 1: layerNodeCount (uint)
+            ClHelpers.SetKernelArg(
+                _backwardKernel,
+                1,
+                (uint)NodeCount
+            );
+             // Arg 2: nextLayerNodeCount (uint)
+            ClHelpers.SetKernelArg(
+                _backwardKernel,
+                2,
+                (uint)0
+            );
+            // Arg 3: layerSums (float*)
+            ClHelpers.SetKernelArg(
+                _backwardKernel,
+                3,
+                new IntPtr(MiscHelpers.IntPtrSize),
+                _layerSums
+            );
+            // Arg 4: layerOutputs (float*)
+            ClHelpers.SetKernelArg(
+                _backwardKernel,
+                4,
+                new IntPtr(MiscHelpers.IntPtrSize),
+                _layerOutputs
+            );
+            // Arg 5: layerOutputs (float*)
+            ClHelpers.SetKernelArg(
+                _backwardKernel,
+                5,
+                new IntPtr(MiscHelpers.IntPtrSize),
+                _layerDeltas
+            );
+            // Arg 6: layerWeights (float*)
+            ClHelpers.SetKernelArg(
+                _backwardKernel,
+                6,
+                new IntPtr(MiscHelpers.IntPtrSize),
+                _weights
+            );
+            // Arg 7: layerBiases (float*)
+            ClHelpers.SetKernelArg(
+                _backwardKernel,
+                7,
+                new IntPtr(MiscHelpers.IntPtrSize),
+                _biases
+            );
+            // Arg 8: previousLayerOutputs (float*)
+            ClHelpers.SetKernelArg(
+                _backwardKernel,
+                8,
+                new IntPtr(MiscHelpers.IntPtrSize),
+                new IntPtr(0)
+            );
+            // Arg 9: nextLayerDeltas (float*)
+            ClHelpers.SetKernelArg(
+                _backwardKernel,
+                9,
+                new IntPtr(MiscHelpers.IntPtrSize),
+                new IntPtr(0)
+            );
+            // Arg 10: nextLayerWeights (float*)
+            ClHelpers.SetKernelArg(
+                _backwardKernel,
+                10,
+                new IntPtr(MiscHelpers.IntPtrSize),
+                new IntPtr(0)
+            );
+            // Arg 11: targets (float*)
+            if (_finalLayer) {
+                ClHelpers.SetKernelArg(
+                    _backwardKernel,
+                    11,
+                    new IntPtr(MiscHelpers.IntPtrSize),
+                    _layerTargets
+                );
+            } else {
+                ClHelpers.SetKernelArg(
+                    _backwardKernel,
+                    11,
+                    new IntPtr(MiscHelpers.IntPtrSize),
+                    new IntPtr(0)
+                );
+            }
+        }
+
         public ILayer Previous { 
             set {
                 // Links to previous layer.
@@ -186,6 +307,48 @@ namespace Nerotiq.Structure {
                     2,
                     new IntPtr(MiscHelpers.IntPtrSize),
                     value.Outputs
+                );
+
+                
+                // Arg 0: previousLayerNodeCount (uint)
+                ClHelpers.SetKernelArg(
+                    _backwardKernel,
+                    0,
+                    (uint)value.NodeCount
+                );
+                // Arg 8: previousLayerOutputs (float*)
+                ClHelpers.SetKernelArg(
+                    _backwardKernel,
+                    8,
+                    new IntPtr(MiscHelpers.IntPtrSize),
+                    value.Outputs
+                );
+            }
+        }
+
+        public ILayer Next {
+            set { 
+                // Links to the next layer.
+
+                // Arg 2: nextLayerNodeCount (uint)
+                ClHelpers.SetKernelArg(
+                    _backwardKernel,
+                    2,
+                    (uint)value.NodeCount
+                );
+                // Arg 9: nextLayerDeltas (float*)
+                ClHelpers.SetKernelArg(
+                    _backwardKernel,
+                    9,
+                    new IntPtr(MiscHelpers.IntPtrSize),
+                    value.Deltas
+                );
+                // Arg 10: nextLayerWeights (float*)
+                ClHelpers.SetKernelArg(
+                    _backwardKernel,
+                    10,
+                    new IntPtr(MiscHelpers.IntPtrSize),
+                    value.Deltas
                 );
             }
         }
@@ -244,6 +407,33 @@ namespace Nerotiq.Structure {
             );
         }
         
+        public float[] GetWeights(ExecutionSequence executionSequence)
+        {
+            return executionSequence.ReadBuffer(
+                _weights,
+                0,
+                _weightLength
+            );
+        }
+        
+        public float[] GetBiases(ExecutionSequence executionSequence)
+        {
+            return executionSequence.ReadBuffer(
+                _biases,
+                0,
+                NodeCount
+            );
+        }
+        
+        public float[] GetDeltas(ExecutionSequence executionSequence)
+        {
+            return executionSequence.ReadBuffer(
+                _layerDeltas,
+                0,
+                NodeCount
+            );
+        }
+        
         public void SetOutputs(ExecutionSequence executionSequence, float[] outputs)
         {
             executionSequence.EnqueueWriteBuffer(
@@ -251,6 +441,19 @@ namespace Nerotiq.Structure {
                 0,
                 NodeCount,
                 outputs
+            );
+        }
+        
+        public void SetTargets(ExecutionSequence executionSequence, float[] targets)
+        {
+            if (targets.Length != NodeCount) {
+                throw new NerotiqException($"target value array length ({targets.Length}) does not match layer size ({NodeCount})");
+            }
+            executionSequence.EnqueueWriteBuffer(
+                _layerTargets,
+                0,
+                NodeCount,
+                targets
             );
         }
 
@@ -264,5 +467,6 @@ namespace Nerotiq.Structure {
             _weights?.Dispose();
             _biases?.Dispose();
         }
+
     }
 }

@@ -6,8 +6,8 @@ namespace Nerotiq.Structure {
         public ushort[] FromDimensionality { get; set; }
         public IActivationOptions ActivationOptions { get; set; }
 
-        public ILayer CreateLayer(ExecutionContext executionContext) {
-            return new FeedForwardLayer(executionContext, this);
+        public ILayer CreateLayer(ExecutionContext executionContext, bool finalLayer) {
+            return new FeedForwardLayer(executionContext, this, finalLayer);
         }
     }
 }

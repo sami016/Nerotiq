@@ -7,8 +7,11 @@ namespace Nerotiq.Structure {
         public int NodeCount { get; }
         public ushort[] Dimensionality { get; }
         public ILayer Previous { get; set; }
+        public ILayer Next { get; set; }
 
         public IMem<float> Outputs => _inputs;
+        public IMem<float> Deltas => null;
+        public IMem<float> Weights => null;
 
         private readonly ExecutionContext _executionContext;
         private readonly IMem<float> _inputs;

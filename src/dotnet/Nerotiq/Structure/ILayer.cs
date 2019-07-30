@@ -24,11 +24,28 @@ namespace Nerotiq.Structure
          * This will match the node count in length. 
          */
         IMem<float> Outputs { get; }
+        
+        /**
+         * Gets the layer's delta buffer (useful for linking layers).
+         * This will match the node count in length. 
+         */
+        IMem<float> Deltas { get; }
+        
+        /**
+         * Gets the layer's weight buffer (useful for linking layers).
+         * This will match the node count in length. 
+         */
+        IMem<float> Weights { get; }
 
         /**
          * Reference to the previous layer set when building the network.
          */
         ILayer Previous { set; }
+
+        /**
+         * Reference to the next layer set when building the network.
+         */
+        ILayer Next { set; }
 
         /**
          * 
@@ -44,5 +61,6 @@ namespace Nerotiq.Structure
          * 
          */
         float[] GetOutputs(ExecutionSequence executionSequence);
+
     }
 }

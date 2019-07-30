@@ -17,7 +17,7 @@ namespace Nerotiq.Test
         public InputLayer CreateInput(ushort width = 10) {
             return new InputLayerOptions {
                 Dimensionality = new ushort[] { width }
-            }.CreateLayer(Context) as InputLayer;
+            }.CreateLayer(Context, false) as InputLayer;
         }
 
     }
