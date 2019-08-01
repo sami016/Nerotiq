@@ -1,7 +1,7 @@
 using System;
 using OpenCL.Net;
 
-namespace Nerotiq.Structure {
+namespace Nerotiq.Core.Input {
     public class InputLayer : ILayer, IInput {
         
         public int NodeCount { get; }

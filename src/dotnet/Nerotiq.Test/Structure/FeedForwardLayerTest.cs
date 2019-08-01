@@ -2,7 +2,9 @@ using System;
 using Xunit;
 using Xunit.Abstractions;
 using Nerotiq.Math.Activation;
-using Nerotiq.Structure;
+using Nerotiq.Core;
+using Nerotiq.Core.FeedForward;
+using Nerotiq.Core.Input;
 using FluentAssertions;
 
 namespace Nerotiq.Test.Basic
@@ -23,6 +25,21 @@ namespace Nerotiq.Test.Basic
         {
             Dimensionality = new ushort[] { 3 },
             FromDimensionality = new ushort[] { 2 },
+            ActivationOptions = new ReluActivationOptions()
+        };
+        
+        private static readonly FeedForwardLayerOptions _ffOpt2_A = new FeedForwardLayerOptions 
+        {
+            Dimensionality = new ushort[] { 1 },
+            FromDimensionality = new ushort[] { 1 },
+            ActivationOptions = new ReluActivationOptions()
+        };
+        
+        
+        private static readonly FeedForwardLayerOptions _ffOpt2_B = new FeedForwardLayerOptions 
+        {
+            Dimensionality = new ushort[] { 1 },
+            FromDimensionality = new ushort[] { 1 },
             ActivationOptions = new ReluActivationOptions()
         };
 
@@ -118,6 +135,7 @@ namespace Nerotiq.Test.Basic
 
             _output.WriteLine("Enqueing backward pass");
             layer.BackwardPass(ExecutionSequence);
+            layer.UpdateParameters(ExecutionSequence);
             ExecutionSequence.FinishExecution();
 
             var inputs = input.GetOutputs(ExecutionSequence);
@@ -141,6 +159,82 @@ namespace Nerotiq.Test.Basic
             weights[3].Should().Be(0.7f);
             weights[4].Should().Be(-1f);
             weights[5].Should().Be(-2.3f);
+        }
+
+        
+        /// <summary>
+        /// A single rectified layer to test backward propagation.
+        /// Same set up as Execution_Working.
+        /// </summary>
+        [Fact]
+        public void Backpropagation_Deep_Working()
+        {
+            _output.WriteLine("Starting...");
+            var input = _scaffold.CreateInput(1);
+            _output.WriteLine("Created input");
+            var layer1 = _ffOpt2_A.CreateLayer(_scaffold.Context, false) as FeedForwardLayer;
+            var layer2 = _ffOpt2_B.CreateLayer(_scaffold.Context, true) as FeedForwardLayer;
+            _output.WriteLine("Created layer");
+            // Link the layers together.
+            layer1.Previous = input;
+            layer1.Next = layer2;
+            layer2.Previous = layer1;
+            _output.WriteLine("Linked input to layer");
+
+            _output.WriteLine("Setting inputs");
+            input.SetInputs(ExecutionSequence, new float[] {
+                1f
+            });
+            _output.WriteLine("Setting weights");
+            layer1.SetWeights(ExecutionSequence, new float[] {
+                1f
+            });
+            layer1.SetBiases(ExecutionSequence, new float[] {
+                1f
+            });
+            
+            layer2.SetWeights(ExecutionSequence, new float[] {
+                2f
+            });
+            layer2.SetBiases(ExecutionSequence, new float[] {
+                2f
+            });
+
+
+            layer2.SetTargets(ExecutionSequence, new float[] {
+                10f
+            });
+
+            _output.WriteLine("Enqueing forward pass");
+            layer1.ForwardPass(ExecutionSequence);
+            layer2.ForwardPass(ExecutionSequence);
+
+            _output.WriteLine("Enqueing backward pass");
+            layer2.BackwardPass(ExecutionSequence);
+            layer1.BackwardPass(ExecutionSequence);
+            
+            layer2.UpdateParameters(ExecutionSequence);
+            layer1.UpdateParameters(ExecutionSequence);
+            ExecutionSequence.FinishExecution();
+
+            var inputs = input.GetOutputs(ExecutionSequence);
+            var outputs1 = layer1.GetOutputs(ExecutionSequence);
+            var weights1 = layer1.GetWeights(ExecutionSequence);
+            var biases1 = layer1.GetBiases(ExecutionSequence);
+            var deltas1 = layer1.GetDeltas(ExecutionSequence);
+            var outputs2 = layer2.GetOutputs(ExecutionSequence);
+            var weights2 = layer2.GetWeights(ExecutionSequence);
+            var biases2 = layer2.GetBiases(ExecutionSequence);
+            var deltas2 = layer2.GetDeltas(ExecutionSequence);
+
+            outputs1[0].Should().Be(2);
+            outputs2[0].Should().Be(6);
+
+            deltas2[0].Should().Be(-4f);
+            deltas1[0].Should().Be(-8f);
+            // deltas[0].Should().Be(3);
+
+            // weights[0].Should().Be(0.4f);
         }
     }
 }

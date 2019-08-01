@@ -1,6 +1,6 @@
 using Nerotiq.Exceptions;
 
-namespace Nerotiq.Structure {
+namespace Nerotiq.Core.Input {
     public class InputLayerOptions : ILayerConfig
     {
         public ushort[] Dimensionality { get; set; }

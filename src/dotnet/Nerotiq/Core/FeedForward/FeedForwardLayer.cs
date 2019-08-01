@@ -5,7 +5,7 @@ using Nerotiq.Math.Activation;
 using Nerotiq.Util;
 using OpenCL.Net;
 
-namespace Nerotiq.Structure {
+namespace Nerotiq.Core.FeedForward {
     public class FeedForwardLayer : ILayer, IOutput
     {
         private static readonly string _source;
@@ -20,9 +20,10 @@ namespace Nerotiq.Structure {
         private Kernel _forwardKernel;
         private Kernel _backwardKernel;
         private readonly IActivation _activation;
+        private readonly IFeedForwardUpdate _update;
 
         static FeedForwardLayer() {
-            _source = SourceLoader.Read("Nerotiq.core.feedforward.cl");
+            _source = SourceLoader.Read("Nerotiq.core.feedforward.feedforward.cl");
         }
 
         public FeedForwardLayer(int nodeCount) 
@@ -42,6 +43,7 @@ namespace Nerotiq.Structure {
         public IMem<float> Outputs => _layerOutputs;
         public IMem<float> Deltas => _layerDeltas;
         public IMem<float> Weights => _weights;
+        public IMem<float> Biases => _biases;
 
         public FeedForwardLayer(ExecutionContext executionContext, FeedForwardLayerOptions options, bool finalLayer)
         {
@@ -52,6 +54,8 @@ namespace Nerotiq.Structure {
             _previousLayerNodeCount = MatrixHelpers.GetCardinality(options.FromDimensionality);
             _activation = (options.ActivationOptions ?? new ReluActivationOptions())
                 .Create();
+            _update = (options.UpdateOptions ?? new FeedForwardUpdateOptions())
+                .Create(executionContext);
 
             CompileKernels(executionContext);
             AllocateBuffers(executionContext, options);
@@ -323,6 +327,9 @@ namespace Nerotiq.Structure {
                     new IntPtr(MiscHelpers.IntPtrSize),
                     value.Outputs
                 );
+
+                // Set-up the update scheme, which requires knowledge of the previous layer's outputs.
+                _update.SetUp(this, value);
             }
         }
 
@@ -348,7 +355,7 @@ namespace Nerotiq.Structure {
                     _backwardKernel,
                     10,
                     new IntPtr(MiscHelpers.IntPtrSize),
-                    value.Deltas
+                    value.Weights
                 );
             }
         }
@@ -373,6 +380,11 @@ namespace Nerotiq.Structure {
                 new IntPtr [] { new IntPtr(NodeCount) },
                 null
             );
+        }
+
+        public void UpdateParameters(ExecutionSequence executionSequence)
+        {
+            _update.Update(executionSequence);
         }
 
         public void SetWeights(ExecutionSequence executionSequence, float[] weights)

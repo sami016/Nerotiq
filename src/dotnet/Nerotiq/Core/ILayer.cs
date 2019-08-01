@@ -1,7 +1,7 @@
 using System;
 using OpenCL.Net;
 
-namespace Nerotiq.Structure
+namespace Nerotiq.Core
 {
     /**
      * Represents the instance of a layer within a network.

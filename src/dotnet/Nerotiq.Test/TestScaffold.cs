@@ -1,5 +1,7 @@
 using Nerotiq;
-using Nerotiq.Structure;
+using Nerotiq.Core;
+using Nerotiq.Core.FeedForward;
+using Nerotiq.Core.Input;
 using Xunit;
 
 namespace Nerotiq.Test

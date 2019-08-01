@@ -1,4 +1,5 @@
-namespace Nerotiq.Structure 
+
+namespace Nerotiq.Core
 {
     /**
      * Interface for a layer that can act as an output.

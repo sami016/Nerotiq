@@ -1,7 +1,7 @@
 using System;
 using Nerotiq.Exceptions;
 
-namespace Nerotiq.Structure
+namespace Nerotiq.Core
 {
     /**
      * A network consisting of a sequence of layers.
