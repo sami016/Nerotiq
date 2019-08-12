@@ -68,7 +68,7 @@ namespace Nerotiq.Core.FeedForward {
             _program = Cl.CreateProgramWithSource(
                 executionContext.OpenClContext, 
                 2, 
-                new[] { _activation.Source, _source },
+                SourceLoader.CreateProgramCollection(_activation.Source, _source),
                 null,
                 out var error
             );
