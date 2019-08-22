@@ -1,4 +1,5 @@
 using System;
+using Nerotiq.Util.Data;
 using OpenCL.Net;
 
 namespace Nerotiq.Core.Input {
@@ -9,12 +10,12 @@ namespace Nerotiq.Core.Input {
         public ILayer Previous { get; set; }
         public ILayer Next { get; set; }
 
-        public IMem<float> Outputs => _inputs;
-        public IMem<float> Deltas => null;
-        public IMem<float> Weights => null;
+        public GpuMatrix Outputs => _inputs;
+        public GpuMatrix Deltas => null;
+        public GpuMatrix Weights => null;
 
         private readonly ExecutionContext _executionContext;
-        private readonly IMem<float> _inputs;
+        private readonly GpuMatrix _inputs;
 
         public InputLayer(ExecutionContext executionContext, InputLayerOptions options) 
         {
@@ -24,25 +25,15 @@ namespace Nerotiq.Core.Input {
             foreach (var i in options.Dimensionality) {
                 NodeCount *= i;
             }
-            _inputs = Cl.CreateBuffer<float>(
-                executionContext.OpenClContext, 
-                MemFlags.ReadWrite,
-                NodeCount, 
-                out var error
-            );
+            _inputs = new GpuMatrix((ushort)NodeCount, 1, executionContext);
         }
 
-        public void SetInputs(ExecutionSequence executionSequence, float[] inputs)
+        public void SetInputs(ExecutionSequence executionSequence, double[] inputs)
         {
             if (inputs.Length != NodeCount) {
                 throw new ArgumentException($"input array length ({inputs.Length}) does not match input layer size ({NodeCount})", nameof(inputs));
             }
-            executionSequence.EnqueueWriteBuffer(
-                _inputs,
-                0,
-                inputs.Length,
-                inputs
-            );
+            _inputs.Update(inputs, executionSequence);
         }
 
         public void ForwardPass(ExecutionSequence executionSequence)
@@ -59,13 +50,12 @@ namespace Nerotiq.Core.Input {
         {
         }
 
-        public float[] GetOutputs(ExecutionSequence executionSequence)
+        public double[] GetOutputs(ExecutionSequence executionSequence)
         {
-            return executionSequence.ReadBuffer(
-                _inputs,
-                0,
-                NodeCount
-            );
+            using (_inputs.Read(executionSequence))
+            {
+                return _inputs.InMemoryData;
+            }
         }
     }
 }

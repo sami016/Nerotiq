@@ -16,15 +16,15 @@ namespace Nerotiq.Core
             _executionRunner = executionRunner;
         }
 
-        public float[] GetInputs() {
+        public double[] GetInputs() {
             throw new NotImplementedException();
         }
 
-        public float[] GetOutputs() {
+        public double[] GetOutputs() {
             throw new NotImplementedException();
         }
 
-        private void SetInputs(ExecutionSequence executionSequence, float[] inputs) {
+        private void SetInputs(ExecutionSequence executionSequence, double[] inputs) {
             if (Layers.Length < 1) {
                 throw new NerotiqException("Network does not have an input layer");
             }

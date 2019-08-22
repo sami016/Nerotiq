@@ -20,11 +20,11 @@
 __kernel void forwardPass(
     uint previousLayerNodeCount, // 0
     uint layerNodeCount, // 1
-    __global float *previousLayerOutputs, // 2
-    __global float *layerWeights, // 3
-    __global float *layerBiases, // 4
-    __global float *layerSums, // 5
-    __global float *layerOutputs // 6
+    __global double *previousLayerOutputs, // 2
+    __global double *layerWeights, // 3
+    __global double *layerBiases, // 4
+    __global double *layerSums, // 5
+    __global double *layerOutputs // 6
 )
 {
     // Get the current node id we're processing.
@@ -67,15 +67,15 @@ __kernel void backwardPass(
     uint previousLayerNodeCount, // 0
     uint layerNodeCount, // 1
     uint nextLayerNodeCount, // 2
-    __global float *layerSums, // 3
-    __global float *layerOutputs, // 4
-    __global float *layerDeltas, // 5
-    __global float *layerWeights, // 6
-    __global float *layerBiases, // 7
-    __global float *previousLayerOutputs, // 8
-    __global float *nextLayerDeltas, // 9
-    __global float *nextLayerWeights, // 10
-    __global float *targets // 11
+    __global double *layerSums, // 3
+    __global double *layerOutputs, // 4
+    __global double *layerDeltas, // 5
+    __global double *layerWeights, // 6
+    __global double *layerBiases, // 7
+    __global double *previousLayerOutputs, // 8
+    __global double *nextLayerDeltas, // 9
+    __global double *nextLayerWeights, // 10
+    __global double *targets // 11
 )
 {
     // Get the current node id we're processing.
@@ -96,12 +96,12 @@ __kernel void backwardPass(
         layerDeltas[node_id] = sum * activationDerivative(layerSums[node_id]);
     }
     // Update weights according to the learning rate.
-    // for (int i=0; i<previousLayerNodeCount; i++) {
-    //     int weightIndex = i * layerNodeCount + node_id;
-    //     layerWeights[weightIndex] -= 
-    //         // learning rate
-    //         0.1 *
-    //         previousLayerOutputs[i] * layerDeltas[node_id];
-    // }
+    for (int i=0; i<previousLayerNodeCount; i++) {
+        int weightIndex = i * layerNodeCount + node_id;
+        layerWeights[weightIndex] -= 
+            // learning rate
+            0.1 *
+            previousLayerOutputs[i] * layerDeltas[node_id];
+    }
 }
 

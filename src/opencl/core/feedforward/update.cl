@@ -2,7 +2,6 @@
  * Standard feed-forward neural network layer weight update.
  */
 
-
 /**
  * Updates the weights and biases for a layer.
  *
@@ -17,10 +16,10 @@ __kernel void update(
     double learningRate,// 0
     uint previousLayerNodeCount, // 1
     uint layerNodeCount, // 2
-    __global float *layerDeltas, // 3
-    __global float *layerWeights, // 4
-    __global float *layerBiases, // 5
-    __global float *previousLayerOutputs // 6
+    __global double *layerDeltas, // 3
+    __global double *layerWeights, // 4
+    __global double *layerBiases, // 5
+    __global double *previousLayerOutputs // 6
 )
 {
     // Get the current node id we're processing.

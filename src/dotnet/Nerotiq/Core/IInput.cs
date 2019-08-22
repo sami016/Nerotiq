@@ -2,6 +2,6 @@
 namespace Nerotiq.Core 
 {
     public interface IInput {
-        void SetInputs(ExecutionSequence executionSequence, float[] inputs);
+        void SetInputs(ExecutionSequence executionSequence, double[] inputs);
     }
 }

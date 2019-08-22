@@ -2,6 +2,7 @@ using System;
 using Nerotiq.Exceptions;
 using Nerotiq.Math.Activation;
 using Nerotiq.Util;
+using Nerotiq.Util.Data;
 using OpenCL.Net;
 
 namespace Nerotiq.Core.FeedForward {
@@ -30,10 +31,11 @@ namespace Nerotiq.Core.FeedForward {
 
         private void CompileKernels(ExecutionContext executionContext) 
         {
+            var sources = SourceLoader.CreateProgramCollection(_source);
             _program = Cl.CreateProgramWithSource(
                 executionContext.OpenClContext,
-                1, 
-                new[] { _source },
+                (uint)sources.Length, 
+                sources,
                 null,
                 out var error
             );
@@ -83,32 +85,24 @@ namespace Nerotiq.Core.FeedForward {
                 (uint)layer.NodeCount
             );
             // Arg 3: layerDeltas (float*)
-            ClHelpers.SetKernelArg(
+            layer.Deltas.SetKernelArg(
                 _updateKernel,
-                3,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                layer.Deltas
+                3
             );
             // Arg 4: layerWeights (float*)
-            ClHelpers.SetKernelArg(
+            layer.Weights.SetKernelArg(
                 _updateKernel,
-                4,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                layer.Weights
+                4
             );
             // Arg 5: layerBiases (float*)
-            ClHelpers.SetKernelArg(
+            layer.Biases.SetKernelArg(
                 _updateKernel,
-                5,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                layer.Biases
+                5
             );
             // Arg 6: previousLayerOutputs (float*)
-            ClHelpers.SetKernelArg(
+            previousLayer.Outputs.SetKernelArg(
                 _updateKernel,
-                6,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                previousLayer.Outputs
+                6
             );
         }
 

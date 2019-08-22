@@ -8,9 +8,11 @@ namespace Nerotiq.Util
         static MiscHelpers() {
             IntPtrSize = Marshal.SizeOf(typeof(IntPtr));
             UIntPtrSize = Marshal.SizeOf(typeof(UIntPtr)) * 2;
+            UIntSize = Marshal.SizeOf(typeof(uint));
         }
 
         public static readonly int IntPtrSize;
         public static readonly int UIntPtrSize;
+        public static readonly int UIntSize;
     }
 }

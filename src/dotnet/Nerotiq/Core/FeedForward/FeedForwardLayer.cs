@@ -3,19 +3,20 @@ using System.Runtime.InteropServices;
 using Nerotiq.Exceptions;
 using Nerotiq.Math.Activation;
 using Nerotiq.Util;
+using Nerotiq.Util.Data;
 using OpenCL.Net;
 
 namespace Nerotiq.Core.FeedForward {
     public class FeedForwardLayer : ILayer, IOutput
     {
         private static readonly string _source;
-        private IMem<float> _layerSums;
-        private IMem<float> _layerOutputs;
-        private IMem<float> _layerDeltas;
+        private GpuMatrix _layerSums;
+        private GpuMatrix _layerOutputs;
+        private GpuMatrix _layerDeltas;
         // This is only defined for the final output layer.
-        private IMem<float> _layerTargets;
-        private IMem<float> _weights;
-        private IMem<float> _biases;
+        private GpuMatrix _layerTargets;
+        private GpuMatrix _weights;
+        private GpuMatrix _biases;
         private Program _program;
         private Kernel _forwardKernel;
         private Kernel _backwardKernel;
@@ -33,24 +34,28 @@ namespace Nerotiq.Core.FeedForward {
         }
         public int NodeCount { get; set; }
 
+        private readonly int _fromNodeCount;
         private readonly int _previousLayerNodeCount;
+        private readonly FeedForwardLayerOptions _options;
         private readonly bool _finalLayer;
 
         public ushort[] Dimensionality { get; set; }
 
         private readonly int _weightLength;
 
-        public IMem<float> Outputs => _layerOutputs;
-        public IMem<float> Deltas => _layerDeltas;
-        public IMem<float> Weights => _weights;
-        public IMem<float> Biases => _biases;
+        public GpuMatrix Outputs => _layerOutputs;
+        public GpuMatrix Deltas => _layerDeltas;
+        public GpuMatrix Weights => _weights;
+        public GpuMatrix Biases => _biases;
 
         public FeedForwardLayer(ExecutionContext executionContext, FeedForwardLayerOptions options, bool finalLayer)
         {
+            _options = options;
             _finalLayer = finalLayer;
             Dimensionality = options.Dimensionality;
             _weightLength = MatrixHelpers.GetWeightCardinality(options.FromDimensionality, options.Dimensionality);
             NodeCount = MatrixHelpers.GetCardinality(options.Dimensionality);
+            _fromNodeCount = MatrixHelpers.GetCardinality(options.FromDimensionality);
             _previousLayerNodeCount = MatrixHelpers.GetCardinality(options.FromDimensionality);
             _activation = (options.ActivationOptions ?? new ReluActivationOptions())
                 .Create();
@@ -65,10 +70,11 @@ namespace Nerotiq.Core.FeedForward {
 
         private void CompileKernels(ExecutionContext executionContext) 
         {
+            var sourceCollection =  SourceLoader.CreateProgramCollection(_activation.Source, _source);
             _program = Cl.CreateProgramWithSource(
                 executionContext.OpenClContext, 
-                2, 
-                SourceLoader.CreateProgramCollection(_activation.Source, _source),
+                (uint)sourceCollection.Length,
+                sourceCollection,
                 null,
                 out var error
             );
@@ -102,69 +108,47 @@ namespace Nerotiq.Core.FeedForward {
 
         private void AllocateBuffers(ExecutionContext executionContext, FeedForwardLayerOptions options) 
         {
-            _layerSums = Cl.CreateBuffer<float>(
-                executionContext.OpenClContext, 
-                MemFlags.ReadWrite,
-                NodeCount, 
-                out var error
-            );
-            if (error != ErrorCode.Success) 
+            try {
+                _layerSums = new GpuMatrix((ushort)NodeCount, 1, executionContext);
+            } catch (Exception ex)
             {
-                throw new NerotiqException($"Error allocating memory buffer {error}");
+                throw new NerotiqException($"Error allocating sum buffer", ex);
             }
-            _layerOutputs = Cl.CreateBuffer<float>(
-                executionContext.OpenClContext, 
-                MemFlags.ReadWrite,
-                NodeCount, 
-                out error
-            );
-            if (error != ErrorCode.Success) 
+            try {
+                _layerOutputs = new GpuMatrix((ushort)NodeCount, 1, executionContext);
+            } catch (Exception ex)
             {
-                throw new NerotiqException($"Error allocating memory buffer {error}");
+                throw new NerotiqException($"Error allocating output buffer", ex);
             }
-            _layerDeltas = Cl.CreateBuffer<float>(
-                executionContext.OpenClContext, 
-                MemFlags.ReadWrite,
-                NodeCount, 
-                out error
-            );
-            if (error != ErrorCode.Success) 
+            try {
+                _layerDeltas = new GpuMatrix((ushort)NodeCount, 1, executionContext);
+            } catch (Exception ex)
             {
-                throw new NerotiqException($"Error allocating delta buffer {error}");
+                throw new NerotiqException($"Error allocating delta buffer", ex);
             }
             if (_finalLayer) {
-                _layerTargets = Cl.CreateBuffer<float>(
-                    executionContext.OpenClContext, 
-                    MemFlags.ReadWrite,
-                    NodeCount, 
-                    out error
-                );
-                if (error != ErrorCode.Success) 
+                try {
+                    _layerTargets = new GpuMatrix((ushort)NodeCount, 1, executionContext);
+                } catch (Exception ex)
                 {
-                    throw new NerotiqException($"Error allocating targets buffer {error}");
+                    throw new NerotiqException($"Error allocating delta buffer", ex);
                 }
             }
 
             // Parameters
-            _weights = Cl.CreateBuffer<float>(
-                executionContext.OpenClContext, 
-                MemFlags.ReadWrite,
-                _weightLength, 
-                out error
-            );
-            if (error != ErrorCode.Success) 
+            
+            try {
+                _weights = new GpuMatrix((ushort)NodeCount, (ushort)_fromNodeCount, executionContext);
+            } catch (Exception ex)
             {
-                throw new NerotiqException($"Error allocating weight buffer {error}");
+                throw new NerotiqException($"Error allocating weight buffer", ex);
             }
-            _biases = Cl.CreateBuffer<float>(
-                executionContext.OpenClContext, 
-                MemFlags.ReadWrite,
-                NodeCount, 
-                out error
-            );
-            if (error != ErrorCode.Success) 
+            
+            try {
+                _biases = new GpuMatrix((ushort)NodeCount, 1, executionContext);
+            } catch (Exception ex)
             {
-                throw new NerotiqException($"Error allocating bias buffer {error}");
+                throw new NerotiqException($"Error allocating bias buffer", ex);
             }
         }
 
@@ -183,33 +167,13 @@ namespace Nerotiq.Core.FeedForward {
                 (uint)NodeCount
             );
             // Arg 3: layerWeights (float*)
-            ClHelpers.SetKernelArg(
-                _forwardKernel,
-                3,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                _weights
-            );
+            _weights.SetKernelArg(_forwardKernel, 3);
             // Arg 4: layerBiases (float*)
-            ClHelpers.SetKernelArg(
-                _forwardKernel,
-                4,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                _biases
-            );
+            _biases.SetKernelArg(_forwardKernel, 4);
             // Arg 5: layerSums (float*)
-            ClHelpers.SetKernelArg(
-                _forwardKernel,
-                5,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                _layerSums
-            );
+            _layerSums.SetKernelArg(_forwardKernel, 5);
             // Arg 6: layerOutputs (float*)
-            ClHelpers.SetKernelArg(
-                _forwardKernel,
-                6,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                _layerOutputs
-            );
+            _layerOutputs.SetKernelArg(_forwardKernel, 6);
         }
 
            
@@ -228,76 +192,29 @@ namespace Nerotiq.Core.FeedForward {
                 (uint)0
             );
             // Arg 3: layerSums (float*)
-            ClHelpers.SetKernelArg(
-                _backwardKernel,
-                3,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                _layerSums
-            );
+            _layerSums.SetKernelArg(_backwardKernel, 3);
             // Arg 4: layerOutputs (float*)
-            ClHelpers.SetKernelArg(
-                _backwardKernel,
-                4,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                _layerOutputs
-            );
+            _layerOutputs.SetKernelArg(_backwardKernel, 4);
             // Arg 5: layerOutputs (float*)
-            ClHelpers.SetKernelArg(
-                _backwardKernel,
-                5,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                _layerDeltas
-            );
+            _layerDeltas.SetKernelArg(_backwardKernel, 5);
             // Arg 6: layerWeights (float*)
-            ClHelpers.SetKernelArg(
-                _backwardKernel,
-                6,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                _weights
-            );
+            _weights.SetKernelArg(_backwardKernel, 6);
             // Arg 7: layerBiases (float*)
-            ClHelpers.SetKernelArg(
-                _backwardKernel,
-                7,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                _biases
-            );
+            _biases.SetKernelArg(_backwardKernel, 7);
             // Arg 8: previousLayerOutputs (float*)
-            ClHelpers.SetKernelArg(
-                _backwardKernel,
-                8,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                new IntPtr(0)
-            );
+            GpuMatrix.SetNullKernelArg(_backwardKernel, 8);
             // Arg 9: nextLayerDeltas (float*)
-            ClHelpers.SetKernelArg(
-                _backwardKernel,
-                9,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                new IntPtr(0)
-            );
-            // Arg 10: nextLayerWeights (float*)
-            ClHelpers.SetKernelArg(
-                _backwardKernel,
-                10,
-                new IntPtr(MiscHelpers.IntPtrSize),
-                new IntPtr(0)
-            );
+            GpuMatrix.SetNullKernelArg(_backwardKernel, 9);
+            // // Arg 10: nextLayerWeights (float*)
+            GpuMatrix.SetNullKernelArg(_backwardKernel, 10);
             // Arg 11: targets (float*)
             if (_finalLayer) {
-                ClHelpers.SetKernelArg(
+                _layerTargets.SetKernelArg(
                     _backwardKernel,
-                    11,
-                    new IntPtr(MiscHelpers.IntPtrSize),
-                    _layerTargets
+                    11
                 );
             } else {
-                ClHelpers.SetKernelArg(
-                    _backwardKernel,
-                    11,
-                    new IntPtr(MiscHelpers.IntPtrSize),
-                    new IntPtr(0)
-                );
+                GpuMatrix.SetNullKernelArg(_backwardKernel, 11);
             }
         }
 
@@ -306,14 +223,11 @@ namespace Nerotiq.Core.FeedForward {
                 // Links to previous layer.
 
                 // Arg 2: previousLayerOutputs (float*)
-                ClHelpers.SetKernelArg(
+                value.Outputs.SetKernelArg(
                     _forwardKernel,
-                    2,
-                    new IntPtr(MiscHelpers.IntPtrSize),
-                    value.Outputs
+                    2
                 );
 
-                
                 // Arg 0: previousLayerNodeCount (uint)
                 ClHelpers.SetKernelArg(
                     _backwardKernel,
@@ -321,11 +235,9 @@ namespace Nerotiq.Core.FeedForward {
                     (uint)value.NodeCount
                 );
                 // Arg 8: previousLayerOutputs (float*)
-                ClHelpers.SetKernelArg(
+                value.Outputs.SetKernelArg(
                     _backwardKernel,
-                    8,
-                    new IntPtr(MiscHelpers.IntPtrSize),
-                    value.Outputs
+                    8
                 );
 
                 // Set-up the update scheme, which requires knowledge of the previous layer's outputs.
@@ -344,18 +256,14 @@ namespace Nerotiq.Core.FeedForward {
                     (uint)value.NodeCount
                 );
                 // Arg 9: nextLayerDeltas (float*)
-                ClHelpers.SetKernelArg(
+                value.Deltas.SetKernelArg(
                     _backwardKernel,
-                    9,
-                    new IntPtr(MiscHelpers.IntPtrSize),
-                    value.Deltas
+                    9
                 );
                 // Arg 10: nextLayerWeights (float*)
-                ClHelpers.SetKernelArg(
+                value.Weights.SetKernelArg(
                     _backwardKernel,
-                    10,
-                    new IntPtr(MiscHelpers.IntPtrSize),
-                    value.Weights
+                    10
                 );
             }
         }
@@ -387,86 +295,62 @@ namespace Nerotiq.Core.FeedForward {
             _update.Update(executionSequence);
         }
 
-        public void SetWeights(ExecutionSequence executionSequence, float[] weights)
+        public void SetWeights(ExecutionSequence executionSequence, double[] weights)
         {
             if (weights.Length != _weightLength) {
                 throw new ArgumentException($"weight array length ({weights.Length}) does not match required ({_weightLength})", nameof(weights));
             }
-            executionSequence.EnqueueWriteBuffer(
-                _weights,
-                0,
-                weights.Length,
-                weights
-            );
+            _weights.Update(weights, executionSequence);
         }
 
-        public void SetBiases(ExecutionSequence executionSequence, float[] biases)
+        public void SetBiases(ExecutionSequence executionSequence, double[] biases)
         {
-            executionSequence.EnqueueWriteBuffer(
-                _biases,
-                0,
-                biases.Length,
-                biases
-            );
+            _biases.Update(biases, executionSequence);
         }
 
-        public float[] GetOutputs(ExecutionSequence executionSequence)
+        public double[] GetOutputs(ExecutionSequence executionSequence)
         {
-            return executionSequence.ReadBuffer(
-                _layerOutputs,
-                0,
-                NodeCount
-            );
+            using (_layerOutputs.Read(executionSequence)) 
+            {
+                return _layerOutputs.InMemoryData;
+            }
         }
         
-        public float[] GetWeights(ExecutionSequence executionSequence)
+        public double[] GetWeights(ExecutionSequence executionSequence)
         {
-            return executionSequence.ReadBuffer(
-                _weights,
-                0,
-                _weightLength
-            );
+            using (_weights.Read(executionSequence)) 
+            {
+                return _weights.InMemoryData;
+            }
         }
         
-        public float[] GetBiases(ExecutionSequence executionSequence)
+        public double[] GetBiases(ExecutionSequence executionSequence)
         {
-            return executionSequence.ReadBuffer(
-                _biases,
-                0,
-                NodeCount
-            );
+            using (_biases.Read(executionSequence)) 
+            {
+                return _biases.InMemoryData;
+            }
         }
         
-        public float[] GetDeltas(ExecutionSequence executionSequence)
+        public double[] GetDeltas(ExecutionSequence executionSequence)
         {
-            return executionSequence.ReadBuffer(
-                _layerDeltas,
-                0,
-                NodeCount
-            );
+            using (_layerDeltas.Read(executionSequence)) 
+            {
+                return _layerDeltas.InMemoryData;
+            }
         }
         
-        public void SetOutputs(ExecutionSequence executionSequence, float[] outputs)
+        public void SetOutputs(ExecutionSequence executionSequence, double[] outputs)
         {
-            executionSequence.EnqueueWriteBuffer(
-                _layerOutputs,
-                0,
-                NodeCount,
-                outputs
-            );
+            _layerOutputs.Update(outputs, executionSequence);
         }
         
-        public void SetTargets(ExecutionSequence executionSequence, float[] targets)
+        public void SetTargets(ExecutionSequence executionSequence, double[] targets)
         {
             if (targets.Length != NodeCount) {
                 throw new NerotiqException($"target value array length ({targets.Length}) does not match layer size ({NodeCount})");
             }
-            executionSequence.EnqueueWriteBuffer(
-                _layerTargets,
-                0,
-                NodeCount,
-                targets
-            );
+            _layerTargets.Update(targets, executionSequence);
         }
 
         public void Dispose()

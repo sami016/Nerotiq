@@ -21,13 +21,13 @@ namespace Nerotiq.Util
         public static string[] CreateProgramCollection(params string[] modules)
         {
             var output = new string[modules.Length + SharedLibraries.Length];
-            for (var i=0; i<modules.Length; i++)
-            {
-                output[i] = modules[i];
-            }
             for (var i=0; i<SharedLibraries.Length; i++)
             {
-                output[i + modules.Length] = SharedLibraries[i];
+                output[i] = SharedLibraries[i];
+            }
+            for (var i=0; i<modules.Length; i++)
+            {
+                output[i + SharedLibraries.Length] = modules[i];
             }
             return output;
         }

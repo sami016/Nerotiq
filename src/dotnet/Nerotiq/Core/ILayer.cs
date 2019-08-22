@@ -1,4 +1,5 @@
 using System;
+using Nerotiq.Util.Data;
 using OpenCL.Net;
 
 namespace Nerotiq.Core
@@ -23,19 +24,19 @@ namespace Nerotiq.Core
          * Gets the layer's output buffer (useful for linking layers).
          * This will match the node count in length. 
          */
-        IMem<float> Outputs { get; }
+        GpuMatrix Outputs { get; }
         
         /**
          * Gets the layer's delta buffer (useful for linking layers).
          * This will match the node count in length. 
          */
-        IMem<float> Deltas { get; }
+        GpuMatrix Deltas { get; }
         
         /**
          * Gets the layer's weight buffer (useful for linking layers).
          * This will match the node count in length. 
          */
-        IMem<float> Weights { get; }
+        GpuMatrix Weights { get; }
 
         /**
          * Reference to the previous layer set when building the network.
@@ -60,7 +61,7 @@ namespace Nerotiq.Core
         /**
          * 
          */
-        float[] GetOutputs(ExecutionSequence executionSequence);
+        double[] GetOutputs(ExecutionSequence executionSequence);
 
     }
 }

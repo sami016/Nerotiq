@@ -59,19 +59,19 @@ namespace Nerotiq.Test.Basic
             _output.WriteLine("Linked input to layer");
 
             _output.WriteLine("Setting inputs");
-            input.SetInputs(ExecutionSequence, new float[] {
-                2,
-                1f
+            input.SetInputs(ExecutionSequence, new double[] {
+                2.0,
+                1.0
             });
             _output.WriteLine("Setting weights");
-            layer.SetWeights(ExecutionSequence, new float[] {
-                1, 1, 1,
-                1, -1, -2
+            layer.SetWeights(ExecutionSequence, new double[] {
+                1.0, 1.0, 1.0,
+                1.0, -1.0, -2.0
             });
-            layer.SetBiases(ExecutionSequence, new float[] {
-                4,
-                -2,
-                1,
+            layer.SetBiases(ExecutionSequence, new double[] {
+                4.0,
+                -2.0,
+                1.0,
             });
 
             _output.WriteLine("Enqueing forward pass");
@@ -81,9 +81,9 @@ namespace Nerotiq.Test.Basic
             var inputs = input.GetOutputs(ExecutionSequence);
             var outputs = layer.GetOutputs(ExecutionSequence);
 
-            outputs[0].Should().Be(7);
-            outputs[1].Should().Be(0);
-            outputs[2].Should().Be(1);
+            outputs[0].Should().Be(7.0);
+            outputs[1].Should().Be(0.0);
+            outputs[2].Should().Be(1.0);
         }
         
         /// <summary>
@@ -103,31 +103,31 @@ namespace Nerotiq.Test.Basic
             _output.WriteLine("Linked input to layer");
 
             _output.WriteLine("Setting inputs");
-            input.SetInputs(ExecutionSequence, new float[] {
-                2,
-                1f
+            input.SetInputs(ExecutionSequence, new double[] {
+                2.0,
+                1.0
             });
             _output.WriteLine("Setting weights");
-            layer.SetWeights(ExecutionSequence, new float[] {
+            layer.SetWeights(ExecutionSequence, new double[] {
                 // Weights from node 0 in the previous layer.
-                1, 1, 1,
+                1.0, 1.0, 1.0,
                 // Weights from node 1 in the previous layer.
-                1, -1, -2
+                1.0, -1.0, -2.0
             });
-            layer.SetBiases(ExecutionSequence, new float[] {
-                4,
-                -2,
-                1,
+            layer.SetBiases(ExecutionSequence, new double[] {
+                4.0,
+                -2.0,
+                1.0,
             });
 
 
-            layer.SetTargets(ExecutionSequence, new float[] {
+            layer.SetTargets(ExecutionSequence, new double[] {
                 // Target value for node 0 in the output layer.
-                4,
+                4.0,
                 // Target value for node 1 in the output layer.
-                10,
+                10.0,
                 // Target value for node 2 in the output layer.
-                -2
+                -2.0
             });
 
             _output.WriteLine("Enqueing forward pass");
@@ -144,21 +144,21 @@ namespace Nerotiq.Test.Basic
             var biases = layer.GetBiases(ExecutionSequence);
             var deltas = layer.GetDeltas(ExecutionSequence);
 
-            outputs[0].Should().Be(7);
-            outputs[1].Should().Be(0);
-            outputs[2].Should().Be(1);
+            outputs[0].Should().Be(7.0);
+            outputs[1].Should().Be(0.0);
+            outputs[2].Should().Be(1.0);
 
-            deltas[0].Should().Be(3);
-            deltas[1].Should().Be(0);
-            deltas[2].Should().Be(3);
+            deltas[0].Should().Be(3.0);
+            deltas[1].Should().Be(0.0);
+            deltas[2].Should().Be(3.0);
 
-            weights[0].Should().Be(0.4f);
-            weights[1].Should().Be(1f);
-            weights[2].Should().Be(0.4f);
+            weights[0].Should().Be(0.4);
+            weights[1].Should().Be(1.0);
+            weights[2].Should().Be(0.4);
 
-            weights[3].Should().Be(0.7f);
-            weights[4].Should().Be(-1f);
-            weights[5].Should().Be(-2.3f);
+            weights[3].Should().Be(0.7);
+            weights[4].Should().Be(-1.0);
+            weights[5].Should().Be(-2.3);
         }
 
         
@@ -182,27 +182,27 @@ namespace Nerotiq.Test.Basic
             _output.WriteLine("Linked input to layer");
 
             _output.WriteLine("Setting inputs");
-            input.SetInputs(ExecutionSequence, new float[] {
-                1f
+            input.SetInputs(ExecutionSequence, new double[] {
+                1.0
             });
             _output.WriteLine("Setting weights");
-            layer1.SetWeights(ExecutionSequence, new float[] {
-                1f
+            layer1.SetWeights(ExecutionSequence, new double[] {
+                1.0
             });
-            layer1.SetBiases(ExecutionSequence, new float[] {
-                1f
+            layer1.SetBiases(ExecutionSequence, new double[] {
+                1.0
             });
             
-            layer2.SetWeights(ExecutionSequence, new float[] {
-                2f
+            layer2.SetWeights(ExecutionSequence, new double[] {
+                2.0
             });
-            layer2.SetBiases(ExecutionSequence, new float[] {
-                2f
+            layer2.SetBiases(ExecutionSequence, new double[] {
+                2.0
             });
 
 
-            layer2.SetTargets(ExecutionSequence, new float[] {
-                10f
+            layer2.SetTargets(ExecutionSequence, new double[] {
+                10.0
             });
 
             _output.WriteLine("Enqueing forward pass");
@@ -235,6 +235,7 @@ namespace Nerotiq.Test.Basic
             // deltas[0].Should().Be(3);
 
             // weights[0].Should().Be(0.4f);
+            
         }
     }
 }

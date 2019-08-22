@@ -10,12 +10,12 @@ namespace Nerotiq.Core
         /**
          * Gets the current outputs of the layer.
          */
-        float[] GetOutputs(ExecutionSequence executionSequence);
+        double[] GetOutputs(ExecutionSequence executionSequence);
 
         /**
          * Sets the targets for the outputs layer.
          * This should only be called if the layer is the final layer in the network.
          */
-        void SetTargets(ExecutionSequence executionSequence, float[] targets);
+        void SetTargets(ExecutionSequence executionSequence, double[] targets);
     }
 }
