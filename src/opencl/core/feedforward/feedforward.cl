@@ -95,13 +95,13 @@ __kernel void backwardPass(
         }
         layerDeltas[node_id] = sum * activationDerivative(layerSums[node_id]);
     }
-    // Update weights according to the learning rate.
-    for (int i=0; i<previousLayerNodeCount; i++) {
-        int weightIndex = i * layerNodeCount + node_id;
-        layerWeights[weightIndex] -= 
-            // learning rate
-            0.1 *
-            previousLayerOutputs[i] * layerDeltas[node_id];
-    }
+    // // Update weights according to the learning rate.
+    // for (int i=0; i<previousLayerNodeCount; i++) {
+    //     int weightIndex = i * layerNodeCount + node_id;
+    //     layerWeights[weightIndex] -= 
+    //         // learning rate
+    //         0.1 *
+    //         previousLayerOutputs[i] * layerDeltas[node_id];
+    // }
 }
 

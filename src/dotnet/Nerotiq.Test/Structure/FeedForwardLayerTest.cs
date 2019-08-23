@@ -14,6 +14,8 @@ namespace Nerotiq.Test.Basic
         private readonly TestScaffold _scaffold;
         private readonly ITestOutputHelper _output;
 
+        private double tolerance = 0.001;
+
         private ExecutionSequence ExecutionSequence => _scaffold.ExecutionSequence;
 
         public FeedForwardLayerTest(TestScaffold scaffold, ITestOutputHelper output) {
@@ -144,21 +146,21 @@ namespace Nerotiq.Test.Basic
             var biases = layer.GetBiases(ExecutionSequence);
             var deltas = layer.GetDeltas(ExecutionSequence);
 
-            outputs[0].Should().Be(7.0);
-            outputs[1].Should().Be(0.0);
-            outputs[2].Should().Be(1.0);
+            outputs[0].Should().BeApproximately(7.0, tolerance);
+            outputs[1].Should().BeApproximately(0.0, tolerance);
+            outputs[2].Should().BeApproximately(1.0, tolerance);
 
-            deltas[0].Should().Be(3.0);
-            deltas[1].Should().Be(0.0);
-            deltas[2].Should().Be(3.0);
+            deltas[0].Should().BeApproximately(3.0, tolerance);
+            deltas[1].Should().BeApproximately(0.0, tolerance);
+            deltas[2].Should().BeApproximately(3.0, tolerance);
 
-            weights[0].Should().Be(0.4);
-            weights[1].Should().Be(1.0);
-            weights[2].Should().Be(0.4);
+            weights[0].Should().BeApproximately(0.4, tolerance);
+            weights[1].Should().BeApproximately(1.0, tolerance);
+            weights[2].Should().BeApproximately(0.4, tolerance);
 
-            weights[3].Should().Be(0.7);
-            weights[4].Should().Be(-1.0);
-            weights[5].Should().Be(-2.3);
+            weights[3].Should().BeApproximately(0.7, tolerance);
+            weights[4].Should().BeApproximately(-1.0, tolerance);
+            weights[5].Should().BeApproximately(-2.3, tolerance);
         }
 
         
@@ -227,11 +229,11 @@ namespace Nerotiq.Test.Basic
             var biases2 = layer2.GetBiases(ExecutionSequence);
             var deltas2 = layer2.GetDeltas(ExecutionSequence);
 
-            outputs1[0].Should().Be(2);
-            outputs2[0].Should().Be(6);
+            outputs1[0].Should().BeApproximately(2, tolerance);
+            outputs2[0].Should().BeApproximately(6, tolerance);
 
-            deltas2[0].Should().Be(-4f);
-            deltas1[0].Should().Be(-8f);
+            deltas2[0].Should().BeApproximately(-4f, tolerance);
+            deltas1[0].Should().BeApproximately(-8f, tolerance);
             // deltas[0].Should().Be(3);
 
             // weights[0].Should().Be(0.4f);

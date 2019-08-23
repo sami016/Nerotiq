@@ -10,3 +10,4 @@
    - `dotnet` - contains all dotnet librares, tests, etc.
      - `Nerotiq` - main library targeting dotnet standard.
      - `Nerotiq.Test` - tests go here.
+
