@@ -4,6 +4,8 @@ using Nerotiq.Core.FeedForward;
 using Nerotiq.Core.Input;
 using Xunit;
 
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+
 namespace Nerotiq.Test
 {
     public class TestScaffold {

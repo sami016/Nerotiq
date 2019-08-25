@@ -7,7 +7,7 @@ using Nerotiq.Core.FeedForward;
 using Nerotiq.Core.Input;
 using FluentAssertions;
 
-namespace Nerotiq.Test.Basic
+namespace Nerotiq.Test.Core
 {
     public class FeedForwardLayerTest : IClassFixture<TestScaffold>
     {
