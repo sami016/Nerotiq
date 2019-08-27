@@ -10,12 +10,6 @@ namespace Nerotiq.Core.FeedForward {
         public ushort[] Dimensionality { get; set; }
 
         /// <summary>
-        /// The dimensionality of the previous layer.
-        /// </summary>
-        /// <value></value>
-        public ushort[] FromDimensionality { get; set; }
-
-        /// <summary>
         /// Options for the activation function to be used.
         /// </summary>
         /// <value>activation options</value>
@@ -27,8 +21,8 @@ namespace Nerotiq.Core.FeedForward {
         /// <value>update options</value>
         public IOption<IFeedForwardUpdate> UpdateOptions { get; set; }
 
-        public ILayer CreateLayer(ExecutionContext executionContext, bool finalLayer) {
-            return new FeedForwardLayer(executionContext, this, finalLayer);
+        public ILayer CreateLayer(ExecutionContext executionContext, ushort[] previousLayerDimensionality) {
+            return new FeedForwardLayer(executionContext, this, previousLayerDimensionality);
         }
     }
 }

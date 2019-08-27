@@ -13,7 +13,7 @@ namespace Nerotiq.Core
         private readonly IList<ILayer> _allLayers = new List<ILayer>();
         private ILayer _currentLayer;
 
-        public static NetworkBuilder Create(ExecutionContext executionContext, ushort[] dimensions)
+        public static NetworkBuilder CreateWithInputs(ExecutionContext executionContext, ushort[] dimensions)
         {
             return new NetworkBuilder(executionContext, dimensions);
         }
@@ -30,7 +30,7 @@ namespace Nerotiq.Core
         
         public NetworkBuilder AddLayer(ILayerConfig layerConfig)
         {
-            return AddLayer(layerConfig.CreateLayer(_executionContext, false));
+            return AddLayer(layerConfig.CreateLayer(_executionContext, _currentLayer.Dimensionality));
         }
 
         private NetworkBuilder(ExecutionContext executionContext, ushort[] dimensionality) 

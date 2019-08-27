@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Nerotiq.Exceptions;
 
 namespace Nerotiq.Core
@@ -17,15 +18,17 @@ namespace Nerotiq.Core
             Layers = layers;
         }
 
-        public double[] GetInputs() {
-            throw new NotImplementedException();
+        public double[] GetInputs(ExecutionSequence executionSequence) {
+            var firstLayer = Layers.First();
+            return firstLayer.GetOutputs(executionSequence);
         }
 
-        public double[] GetOutputs() {
-            throw new NotImplementedException();
+        public double[] GetOutputs(ExecutionSequence executionSequence) {
+            var lastLayer = Layers.Last();
+            return lastLayer.GetOutputs(executionSequence);
         }
 
-        private void SetInputs(ExecutionSequence executionSequence, double[] inputs) {
+        public void SetInputs(ExecutionSequence executionSequence, double[] inputs) {
             if (Layers.Length < 1) {
                 throw new NerotiqException("Network does not have an input layer");
             }

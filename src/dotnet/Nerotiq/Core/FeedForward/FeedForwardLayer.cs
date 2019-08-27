@@ -27,17 +27,10 @@ namespace Nerotiq.Core.FeedForward {
             _source = SourceLoader.Read("Nerotiq.core.feedforward.feedforward.cl");
         }
 
-        public FeedForwardLayer(int nodeCount) 
-        {
-            this.NodeCount = nodeCount;
-               
-        }
         public int NodeCount { get; set; }
 
-        private readonly int _fromNodeCount;
         private readonly int _previousLayerNodeCount;
         private readonly FeedForwardLayerOptions _options;
-        private readonly bool _finalLayer;
 
         public ushort[] Dimensionality { get; set; }
 
@@ -48,15 +41,13 @@ namespace Nerotiq.Core.FeedForward {
         public GpuMatrix Weights => _weights;
         public GpuMatrix Biases => _biases;
 
-        public FeedForwardLayer(ExecutionContext executionContext, FeedForwardLayerOptions options, bool finalLayer)
+        public FeedForwardLayer(ExecutionContext executionContext, FeedForwardLayerOptions options, ushort[] previousLayerDimensionality)
         {
             _options = options;
-            _finalLayer = finalLayer;
             Dimensionality = options.Dimensionality;
-            _weightLength = MatrixHelpers.GetWeightCardinality(options.FromDimensionality, options.Dimensionality);
+            _weightLength = MatrixHelpers.GetWeightCardinality(previousLayerDimensionality, options.Dimensionality);
             NodeCount = MatrixHelpers.GetCardinality(options.Dimensionality);
-            _fromNodeCount = MatrixHelpers.GetCardinality(options.FromDimensionality);
-            _previousLayerNodeCount = MatrixHelpers.GetCardinality(options.FromDimensionality);
+            _previousLayerNodeCount = MatrixHelpers.GetCardinality(previousLayerDimensionality);
             _activation = (options.ActivationOptions ?? new ReluActivationOptions())
                 .Create();
             _update = (options.UpdateOptions ?? new FeedForwardUpdateOptions())
@@ -130,7 +121,7 @@ namespace Nerotiq.Core.FeedForward {
             // Parameters
             
             try {
-                _weights = new GpuMatrix((ushort)NodeCount, (ushort)_fromNodeCount, executionContext);
+                _weights = new GpuMatrix((ushort)NodeCount, (ushort)_previousLayerNodeCount, executionContext);
             } catch (Exception ex)
             {
                 throw new NerotiqException($"Error allocating weight buffer", ex);

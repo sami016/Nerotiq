@@ -3,6 +3,6 @@ namespace Nerotiq.Core
 {
     public interface ILayerConfig 
     {
-        ILayer CreateLayer(ExecutionContext executionContext, bool finalLayer);
+        ILayer CreateLayer(ExecutionContext executionContext, ushort[] previousLayerDimensionality);
     }
 }
