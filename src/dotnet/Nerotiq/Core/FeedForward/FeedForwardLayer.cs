@@ -126,14 +126,6 @@ namespace Nerotiq.Core.FeedForward {
             {
                 throw new NerotiqException($"Error allocating delta buffer", ex);
             }
-            if (_finalLayer) {
-                try {
-                    _layerTargets = new GpuMatrix((ushort)NodeCount, 1, executionContext);
-                } catch (Exception ex)
-                {
-                    throw new NerotiqException($"Error allocating delta buffer", ex);
-                }
-            }
 
             // Parameters
             
@@ -208,14 +200,7 @@ namespace Nerotiq.Core.FeedForward {
             // // Arg 10: nextLayerWeights (float*)
             GpuMatrix.SetNullKernelArg(_backwardKernel, 10);
             // Arg 11: targets (float*)
-            if (_finalLayer) {
-                _layerTargets.SetKernelArg(
-                    _backwardKernel,
-                    11
-                );
-            } else {
-                GpuMatrix.SetNullKernelArg(_backwardKernel, 11);
-            }
+            GpuMatrix.SetNullKernelArg(_backwardKernel, 11);
         }
 
         public ILayer Previous { 
@@ -349,6 +334,19 @@ namespace Nerotiq.Core.FeedForward {
         {
             if (targets.Length != NodeCount) {
                 throw new NerotiqException($"target value array length ({targets.Length}) does not match layer size ({NodeCount})");
+            }
+            if (_layerTargets == null) 
+            {
+                try {
+                    _layerTargets = new GpuMatrix((ushort)NodeCount, 1, executionSequence.Context);
+                } catch (Exception ex)
+                {
+                    throw new NerotiqException($"Error allocating delta buffer", ex);
+                }
+                _layerTargets.SetKernelArg(
+                    _backwardKernel,
+                    11
+                );
             }
             _layerTargets.Update(targets, executionSequence);
         }

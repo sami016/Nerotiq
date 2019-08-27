@@ -8,12 +8,13 @@ namespace Nerotiq.Core
      */
     public class Network
     {
-        private readonly ExecutionSequence _executionRunner;
+        private readonly ExecutionContext _executionContext;
 
         public ILayer[] Layers { get; set; }
 
-        public Network(ExecutionSequence executionRunner) {
-            _executionRunner = executionRunner;
+        public Network(ExecutionContext executionContext, ILayer[] layers) {
+            _executionContext = executionContext;
+            Layers = layers;
         }
 
         public double[] GetInputs() {
